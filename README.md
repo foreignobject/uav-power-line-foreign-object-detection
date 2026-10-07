@@ -107,4 +107,4 @@ Please cite the HaarPSI paper described in the manuscript when using the metric.
 
 The project is distributed under the MIT License. All relevant rights holders have approved this license for the included original code. The collective copyright notice is `The Authors` to avoid exposing individual author identities. HaarPSI retains its upstream copyright and license in `THIRD_PARTY_NOTICES.md`.
 
-After publishing this repository, replace the manuscript's current “code available from the corresponding author upon reasonable request” wording with the public repository URL, while keeping the data unavailability and access restrictions accurate.
+The submitted manuscript currently says that code is available from the corresponding author upon reasonable request. In the revised manuscript, replace that statement with this public repository URL: https://github.com/foreignobject/uav-power-line-foreign-object-detection. Keep the dataset unavailability and access restrictions accurate.
