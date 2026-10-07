@@ -1,0 +1,13 @@
+{
+  "image_width": 1080,
+  "image_height": 720,
+  "grid_scales": [8, 9, 10],
+  "ratio_threshold": 0.55,
+  "ransac_reprojection_threshold": 4.0,
+  "descriptor_norm": "HAMMING",
+  "minimum_good_matches": 5,
+  "haarpsi_input_mode": "grayscale",
+  "relative_similarity_threshold": 0.9,
+  "max_black_pixel_fraction": 0.03,
+  "seed_ransac_from_pair_id": true
+}
