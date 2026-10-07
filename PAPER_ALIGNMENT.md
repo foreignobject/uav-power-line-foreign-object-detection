@@ -1,6 +1,6 @@
 # Manuscript and Source-Code Audit
 
-This audit distinguishes the method written in the manuscript from the implementation that reproduces the saved, independently audited predictions. The two are not fully consistent.
+The high-level IFM-MGS-SAM method is consistent between the manuscript and this release. This audit focuses on two implementation settings in the submitted draft (matching distance and HaarPSI input channels) and on the exact scope of the invalid-pixel rule. The release preserves the settings that reproduce the saved, independently audited predictions and reported headline metrics.
 
 ## What the manuscript describes
 
@@ -21,7 +21,7 @@ Both profiles were run on the same 100 local image pairs, with no failed inferen
 
 The audited source-behavior profile matched all 100 saved per-image boxes in `xlw/scripts/final_independent_audit.py`'s existing audit output. Maximum absolute score differences were below 5e-13. This independently reproduces the saved audit result, but does not prove which exact source revision produced the manuscript's original experiment. The RANSAC seed by image ID was added during that independent audit; the older source script did not set a seed.
 
-## Concrete code-to-paper discrepancy
+## Implementation details to correct in the manuscript
 
 The manuscript says Hamming matching, but the original `similarity_hmy.py` calls `cv2.BFMatcher()` without a norm argument. OpenCV's default is L2. It also passes three-channel arrays to HaarPSI after calling `cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)` on three-channel inputs. In the installed OpenCV 4.11 environment, this conversion leaves those three-channel arrays unchanged; they therefore reach HaarPSI in the original BGR channel order and use its color path. The saved independent audit uses the same L2 and three-channel behavior, and this release reproduces its boxes with that profile.
 
