@@ -1,35 +1,32 @@
-# Manuscript and Source-Code Audit
+# Manuscript and Source-Code Alignment
 
-The high-level IFM-MGS-SAM method is consistent between the manuscript and this release. This audit focuses on two implementation settings in the submitted draft (matching distance and HaarPSI input channels) and on the exact scope of the invalid-pixel rule. The release preserves the settings that reproduce the saved, independently audited predictions and reported headline metrics.
+The revised manuscript describes the released IFM-MGS-SAM reference profile. This note records the implementation details that were corrected in the method text and the remaining limit on historical provenance.
 
-## What the manuscript describes
+## Method described in the revised manuscript
 
-The proposed method is a training-free detector for paired still images. It aligns a historical normal template and a current inspection image with AKAZE/MLDB feature matching and a RANSAC homography (IFM), compares corresponding 8 x 8, 9 x 9, and 10 x 10 image grids (MGS), and selects the lowest-scoring eligible region using HaarPSI (SAM). The manuscript specifies Hamming distance for binary descriptors, grayscale HaarPSI equations, a local-score condition below 0.9 times the full-image score, a 3% invalid-black-pixel rule, and IoU > 0.4 for evaluation.
+The proposed method is a training-free detector for paired still images. It resizes each pair to 1080 × 720, aligns a historical normal template and a current inspection image with AKAZE/MLDB feature matching and a RANSAC homography (IFM), compares corresponding 8 × 8, 9 × 9, and 10 × 10 image grids (MGS), and selects the lowest-scoring eligible region using HaarPSI (SAM). The revised method text specifies OpenCV L2 matching, a ratio threshold of 0.55, at least five retained matches, a 4-pixel RANSAC reprojection threshold, three-channel BGR input passed unchanged to HaarPSI, and the color component of the HaarPSI score. The local-score condition is below 0.9 times the full-image score. A local inspection crop is skipped before local HaarPSI if at least 3% of its pixels are exactly zero in all BGR channels; the full-image score includes warp borders, and no pixel mask is applied to eligible crops.
 
-The proposed IFM-MGS-SAM method has no model-training stage. The manuscript describes training/validation of separate supervised comparison detectors using labeled images; those baseline training pipelines are not part of this release.
+The proposed IFM-MGS-SAM method has no model-training stage. The manuscript describes training and validation of separate supervised comparison detectors; those baseline training pipelines are not part of this release.
 
-## Two executable profiles
+## Audited profiles and reported results
 
 | Profile | Configuration | IFM matching | HaarPSI input | TP / FP / FN / TN | Precision / recall |
 | --- | --- | --- | --- | --- | --- |
-| Audited source behavior | `configs/default.json` | AKAZE descriptors with OpenCV L2; ratio < 0.55; at least 5 matches; RANSAC threshold 4 px | Three-channel OpenCV BGR array passed unchanged to HaarPSI | 45 / 4 / 5 / 49 | 91.84% / 90.00% |
-| Manuscript-described Hamming/grayscale behavior; unspecified thresholds inherited from source | `configs/manuscript_literal.json` | AKAZE descriptors with Hamming; source-inherited ratio < 0.55, at least 5 matches, and RANSAC threshold 4 px | Grayscale | 35 / 6 / 15 / 47 | 85.37% / 70.00% |
+| Revised-manuscript reference profile | `configs/default.json` | AKAZE descriptors with OpenCV L2; ratio < 0.55; at least 5 matches; RANSAC threshold 4 px | Three-channel OpenCV BGR array passed unchanged to HaarPSI | 45 / 4 / 5 / 49 | 91.84% / 90.00% |
+| Historical draft-text comparison | `configs/manuscript_literal.json` | AKAZE descriptors with Hamming; ratio < 0.55; at least 5 matches; RANSAC threshold 4 px | Grayscale | 35 / 6 / 15 / 47 | 85.37% / 70.00% |
 
-The manuscript specifies Hamming distance and grayscale HaarPSI, but it does not specify the ratio threshold, minimum match count, or RANSAC reprojection threshold. Those three settings in the literal-text profile are inherited from the audited source implementation; they are not stated manuscript parameters.
+The Hamming/grayscale profile preserves the earlier draft's wording for comparison; it is not described as equivalent to the revised method. Both saved profiles were evaluated on the same 100 local image pairs. The dataset has 50 positive images with 50 ground-truth boxes and 50 normal images without XML files, so evaluation used the explicit `--missing-xml-is-negative` option. Both use strict IoU > 0.4 and one-to-one matching; unmatched predictions are false positives and unmatched ground-truth boxes are false negatives.
 
-Both profiles were run on the same 100 local image pairs, with no failed inference rows. For this dataset, 50 positive images have XML files containing 50 ground-truth boxes, while the 50 normal images have no XML file. Evaluation therefore used the explicit `--missing-xml-is-negative` option. Both profiles use strict IoU > 0.4 and one-to-one matching; every unmatched prediction is an FP and every unmatched ground-truth box is an FN.
+The default release profile matched all 100 saved per-image boxes in `xlw/scripts/final_independent_audit.py`'s existing audit output, with maximum absolute score differences below 5e-13. The 91.84% precision and 90.00% recall correspond to TP/FP/FN = 45/4/5 under the corrected evaluator. This independently reproduces the saved audit outputs; it does not prove which exact source revision or RANSAC seed produced the original manuscript experiment. The pair-ID RANSAC seed was added during the independent audit; the older source script did not set a seed. The revised manuscript states this distinction explicitly.
 
-The audited source-behavior profile matched all 100 saved per-image boxes in `xlw/scripts/final_independent_audit.py`'s existing audit output. Maximum absolute score differences were below 5e-13. This independently reproduces the saved audit result, but does not prove which exact source revision produced the manuscript's original experiment. The RANSAC seed by image ID was added during that independent audit; the older source script did not set a seed.
+## Key implementation facts now stated in the manuscript
 
-## Implementation details to correct in the manuscript
-
-The manuscript says Hamming matching, but the original `similarity_hmy.py` calls `cv2.BFMatcher()` without a norm argument. OpenCV's default is L2. It also passes three-channel arrays to HaarPSI after calling `cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)` on three-channel inputs. In the installed OpenCV 4.11 environment, this conversion leaves those three-channel arrays unchanged; they therefore reach HaarPSI in the original BGR channel order and use its color path. The saved independent audit uses the same L2 and three-channel behavior, and this release reproduces its boxes with that profile.
-
-The manuscript's grayscale/Hamming profile instead produces 85.37% precision and 70.00% recall on the same private test set. The public release includes both behaviors explicitly rather than claiming they are equivalent. The saved outputs align with the L2/three-channel default. For the manuscript revision, describe that default if it is the experimental implementation being reported. If the experiment actually used Hamming/grayscale, recompute the reported performance. The saved audit alone cannot establish exactly which source revision produced the original experiment.
-
-The manuscript describes regions with at least 3% black pixels as excluded from similarity assessment. This release checks the black-pixel condition before computing local HaarPSI for such cells; this does not change which cells can be retained. The full-image HaarPSI still includes black warp borders. If the manuscript intends those pixels to be masked out of the global score too, that requires a different method definition and another evaluation.
-
-The original evaluator in `similarity_hmy.py` does not count a missed ground-truth box as an FN when a prediction exists but fails the IoU threshold. This can overstate recall. The release evaluator uses the one-to-one rule described above. The published 91.84%/90.00% is consistent with the independently audited TP=45, FP=4, FN=5 counts under the corrected rule.
+- `cv2.BFMatcher()` in the older source used OpenCV's default L2 norm; the release names that norm explicitly.
+- OpenCV image arrays enter the released HaarPSI path in BGR order. The upstream routine applies its YIQ coefficients to the three channels as received, so the revised text documents that exact channel behavior rather than calling it grayscale or standard RGB.
+- The HaarPSI color score includes two Y-component orientation maps plus a combined I/Q map. The revised equations define the additional similarity and its weight.
+- The 3% condition checks exactly black pixels in the inspection crop and skips the whole crop before local HaarPSI. It neither masks black pixels from eligible crops nor removes them from the full-image score.
+- The release uses a stable pair-ID RANSAC seed for reproducible reruns. The available historical source cannot establish whether that seed was used for the original published metrics.
+- Evaluation uses strict one-to-one IoU matching at IoU > 0.4; unmatched predictions count as false positives and unmatched ground-truth boxes count as false negatives. The reported 91.84%/90.00% was recomputed from the saved audited predictions with this rule. The older source evaluator did not consistently count every unmatched ground-truth box as a false negative.
 
 ## Scope review against the original `xlw` tree
 
@@ -45,7 +42,6 @@ If point prediction, interval prediction, corrections, and alarms are required f
 
 - Six focused unit tests pass, including grid construction, HaarPSI, invalid-black-cell short-circuiting, unmatched-box accounting, explicit missing-XML behavior, and a synthetic end-to-end image pair. The verified environment was Python 3.8.8, NumPy 1.24.4, SciPy 1.10.1, and OpenCV 4.11.0.86.
 - `run_detection.py --help` and `evaluate.py --help` run successfully.
-- The audited-source profile processed 100/100 pairs and matched all 100 saved audit prediction boxes exactly.
-- The manuscript-literal profile processed 100/100 pairs and produced TP/FP/FN/TN = 35/6/15/47.
+- The default release profile matched all 100 saved audit prediction boxes exactly; the Hamming/grayscale comparison profile produced TP/FP/FN/TN = 35/6/15/47 on the same local pairs.
 - No images, XML labels, model weights, author identity, or workstation paths are included in the release source files. The dataset remains private.
 - All relevant rights holders approved the root MIT license for the included original code. HaarPSI's attribution and separate upstream MIT terms are retained in `THIRD_PARTY_NOTICES.md`.
